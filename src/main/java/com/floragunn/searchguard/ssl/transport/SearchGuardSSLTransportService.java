@@ -1,10 +1,10 @@
 /*
  * Copyright 2015 floragunn UG (haftungsbeschränkt)
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  */
 
 package com.floragunn.searchguard.ssl.transport;
@@ -73,7 +73,7 @@ public class SearchGuardSSLTransportService extends TransportService {
             this.handler = handler;
             this.action = acion;
         }
-        
+
         @Override
         public void messageReceived(Request request, TransportChannel channel) throws Exception {
             messageReceived(request, channel, null);
@@ -81,26 +81,26 @@ public class SearchGuardSSLTransportService extends TransportService {
 
         @Override
         public void messageReceived(final Request request, final TransportChannel transportChannel, Task task) throws Exception {
-        
+
             NettyTransportChannel nettyChannel = null;
-            
+
             if(transportChannel instanceof DelegatingTransportChannel) {
                 TransportChannel delegatingTransportChannel = ((DelegatingTransportChannel) transportChannel).getChannel();
-                
+
                 if (delegatingTransportChannel instanceof NettyTransportChannel) {
                     nettyChannel =  (NettyTransportChannel) delegatingTransportChannel;
-                } 
+                }
             } else {
                 if (transportChannel instanceof NettyTransportChannel) {
                     nettyChannel =  (NettyTransportChannel) transportChannel;
-                } 
+                }
             }
-            
+
             if (nettyChannel == null) {
                 messageReceivedDecorate(request, handler, transportChannel, task);
                 return;
             }
-            
+
             try {
                 final Channel channel = nettyChannel.getChannel();
                 final SslHandler sslhandler = (SslHandler) channel.getPipeline().get("ssl_server");
@@ -116,7 +116,7 @@ public class SearchGuardSSLTransportService extends TransportService {
                 X500Principal principal;
 
                 final Certificate[] certs = sslhandler.getEngine().getSession().getPeerCertificates();
-                
+
                 if (certs != null && certs.length > 0 && certs[0] instanceof X509Certificate) {
                     X509Certificate[] x509Certs = Arrays.copyOf(certs, certs.length, X509Certificate[].class);
                     addAdditionalContextValues(action, request, x509Certs);
@@ -125,7 +125,7 @@ public class SearchGuardSSLTransportService extends TransportService {
                     request.putInContext("_sg_ssl_transport_peer_certificates", x509Certs);
                     request.putInContext("_sg_ssl_transport_protocol", sslhandler.getEngine().getSession().getProtocol());
                     request.putInContext("_sg_ssl_transport_cipher", sslhandler.getEngine().getSession().getCipherSuite());
-                    messageReceivedDecorate(request, handler, nettyChannel, task);
+                    messageReceivedDecorate(request, handler, transportChannel, task);
                 } else {
                     final String msg = "No X509 transport client certificates found (SG 12)";
                     log.error(msg);
@@ -156,11 +156,11 @@ public class SearchGuardSSLTransportService extends TransportService {
             throws Exception {
         // no-op
     }
-    
+
     protected void messageReceivedDecorate(final TransportRequest request, final TransportRequestHandler handler, final TransportChannel transportChannel, Task task) throws Exception {
         handler.messageReceived(request, transportChannel, task);
     }
-    
+
     protected void errorThrown(Throwable t, final TransportRequest request, String action) {
         // no-op
     }
